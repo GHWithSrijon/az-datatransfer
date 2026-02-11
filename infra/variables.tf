@@ -1,0 +1,45 @@
+variable "project_name" {
+  description = "Short name used in resource naming."
+  type        = string
+  default     = "datatransfer"
+}
+
+variable "location" {
+  description = "Azure region for all resources."
+  type        = string
+  default     = "australiaeast"
+}
+
+variable "environment" {
+  description = "Environment name (e.g. dev, test, prod)."
+  type        = string
+  default     = "dev"
+}
+
+variable "resource_group_name" {
+  description = "Name of the resource group to create."
+  type        = string
+  default     = "Azure-datatransfer-dev-rg"
+}
+
+variable "storage_account_sku" {
+  description = "SKU for the storage account."
+  type        = string
+  default     = "Standard_LRS"
+}
+
+variable "function_runtime_stack" {
+  description = "Runtime stack for the Function App."
+  type        = string
+  default     = "node"
+  validation {
+    condition     = contains(["node", "python", "dotnet"], var.function_runtime_stack)
+    error_message = "function_runtime_stack must be one of: node, python, dotnet."
+  }
+}
+
+variable "tags" {
+  description = "Common tags for all resources."
+  type        = map(string)
+  default     = {}
+}
