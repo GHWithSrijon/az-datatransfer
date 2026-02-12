@@ -136,4 +136,4 @@ __azurite_db*__.json
 
 # Local project settings
 .vscode/
-src/test/*
+test/

@@ -29,3 +29,7 @@ terraform.rc
 
 # Optional: ignore plan files saved before applying
 # example: *tfplan*
+
+# Editor settings and local test data
+.vscode/
+test/
