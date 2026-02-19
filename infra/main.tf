@@ -42,8 +42,8 @@ resource "azurerm_subnet" "private_endpoints_subnet" {
 }
 
 //Create a storage account as backend of the function app
-resource "azurerm_storage_account" "dev_cust_filter_fnc_storage" {
-  name                     = "devfncappstorage4cust"
+resource "azurerm_storage_account" "dev_fnc_cust_backend" {
+  name                     = "devfnccustbackend"
   resource_group_name      = azurerm_resource_group.this.name
   location                 = azurerm_resource_group.this.location
   account_tier             = "Standard"
@@ -51,10 +51,28 @@ resource "azurerm_storage_account" "dev_cust_filter_fnc_storage" {
   tags                     = local.common_tags
 }
 
+
+//Create a storage account as netapp inbound storage for blob created event trigger
+resource "azurerm_storage_account" "dev_netapp_inbound" {
+  name                     = "devnetappinbound"
+  resource_group_name      = azurerm_resource_group.this.name
+  location                 = azurerm_resource_group.this.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  tags                     = local.common_tags
+}
+
+//Create a blob container for netapp inbound storage
+resource "azurerm_storage_container" "dev_netapp_inbound_container" {
+  name                  = "netapp-inbound-docs"
+  storage_account_id    = azurerm_storage_account.dev_netapp_inbound.id
+  container_access_type = "private"
+}
+
 //Create a blob container for FlexConsumption storage
 resource "azurerm_storage_container" "dev_cust_filter_func_container" {
   name                  = "function-app-storage"
-  storage_account_id    = azurerm_storage_account.dev_cust_filter_fnc_storage.id
+  storage_account_id    = azurerm_storage_account.dev_fnc_cust_backend.id
   container_access_type = "private"
 }
 
@@ -96,9 +114,9 @@ resource "azurerm_function_app_flex_consumption" "dev_cust_filter_func" {
   tags                = local.common_tags
 
   storage_container_type      = "blobContainer"
-  storage_container_endpoint  = "${azurerm_storage_account.dev_cust_filter_fnc_storage.primary_blob_endpoint}${azurerm_storage_container.dev_cust_filter_func_container.name}"
+  storage_container_endpoint  = "${azurerm_storage_account.dev_fnc_cust_backend.primary_blob_endpoint}${azurerm_storage_container.dev_cust_filter_func_container.name}"
   storage_authentication_type = "StorageAccountConnectionString"
-  storage_access_key          = azurerm_storage_account.dev_cust_filter_fnc_storage.primary_access_key
+  storage_access_key          = azurerm_storage_account.dev_fnc_cust_backend.primary_access_key
   
   runtime_name    = "python"
   runtime_version = "3.13"
@@ -113,4 +131,28 @@ resource "azurerm_function_app_flex_consumption" "dev_cust_filter_func" {
   }
 
   site_config {}
+}
+
+// Event Grid subscription for BlobCreated events on the storage account
+resource "azurerm_eventgrid_system_topic" "dev_storage_events_topic" {
+  name                   = "dev-storage-events-topic"
+  resource_group_name    = azurerm_resource_group.this.name
+  location               = azurerm_resource_group.this.location
+  source_resource_id     = azurerm_storage_account.dev_netapp_inbound.id
+  topic_type             = "Microsoft.Storage.StorageAccounts"
+}
+
+
+resource "azurerm_eventgrid_system_topic_event_subscription" "dev_storage_eventgrid_blobcreated" {
+  name  = "dev-storage-blobcreated-subscription"
+  system_topic = azurerm_eventgrid_system_topic.dev_storage_events_topic.name
+  resource_group_name = azurerm_resource_group.this.name
+
+  included_event_types = [
+    "Microsoft.Storage.BlobCreated"
+  ]
+
+  azure_function_endpoint {
+    function_id = "${azurerm_function_app_flex_consumption.dev_cust_filter_func.id}/functions/NetappBlobCreateFunction"
+  }
 }
