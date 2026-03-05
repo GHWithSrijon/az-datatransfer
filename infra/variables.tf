@@ -1,7 +1,7 @@
 variable "project_name" {
   description = "Short name used in resource naming."
   type        = string
-  default     = "datatransfer"
+  default     = "blobtest"
 }
 
 variable "location" {
@@ -16,11 +16,6 @@ variable "environment" {
   default     = "dev"
 }
 
-variable "resource_group_name" {
-  description = "Name of the resource group to create."
-  type        = string
-  default     = "DatatransferRG-dev"
-}
 
 variable "storage_account_sku" {
   description = "SKU for the storage account."
